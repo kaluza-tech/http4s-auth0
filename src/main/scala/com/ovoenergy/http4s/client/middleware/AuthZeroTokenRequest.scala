@@ -1,5 +1,12 @@
 package com.ovoenergy.http4s.client.middleware
 
+import cats.effect.IO
+import io.circe.generic.extras.Configuration
+import io.circe.generic.extras.semiauto._
+import io.circe._
+import org.http4s.EntityEncoder
+import org.http4s.circe._
+
 final case class AuthZeroTokenRequest(audience: String,
                                       clientId: String,
                                       clientSecret: String,

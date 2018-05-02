@@ -1,5 +1,7 @@
 package com.ovoenergy.http4s.client.middleware
 
+import org.http4s.Uri
+
 /** Auth0 Client Configuration
   * This is the config required to set up the [[AuthZeroClient]] middleware layer
   *

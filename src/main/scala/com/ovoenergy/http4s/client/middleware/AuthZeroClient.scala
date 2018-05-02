@@ -2,6 +2,16 @@ package com.ovoenergy.http4s.client.middleware
 
 import java.net.ConnectException
 
+import cats.data.{EitherT, Kleisli}
+import cats.effect.IO
+import cats.implicits._
+import com.ovoenergy.http4s.client.middleware.AuthZeroClient.Error.{AuthZeroUnavailable, NotAuthorized}
+import org.http4s.circe._
+import org.http4s.client._
+import org.http4s.{Header, Request, Status, _}
+
+import scala.util.Try
+
 /**
   * HTTP4s Client middleware that transparently provides Auth0 authentication
   *

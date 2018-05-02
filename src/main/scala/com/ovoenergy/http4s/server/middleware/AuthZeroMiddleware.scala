@@ -1,6 +1,15 @@
 package com.ovoenergy.http4s.server.middleware
 
+import cats.data.{Kleisli, OptionT}
+import cats.effect.IO
+import cats.syntax.either._
+import com.auth0.jwk.JwkProvider
 import com.ovoenergy.http4s.server.middleware.AuthZeroAuthenticator.Error._
+import org.http4s._
+import org.http4s.headers.Authorization
+import pdi.jwt.{Jwt, JwtCirce, JwtOptions}
+
+import scala.util.Try
 
 /** Authenticator for AuthZero middleware
   *
@@ -114,7 +123,7 @@ object AuthZeroAuthenticator {
   * TODO: generalise and extract from this project
   */
 object AuthZeroMiddleware {
-  import AuthZeroAuthenticator._
+  import com.ovoenergy.http4s.server.middleware.AuthZeroAuthenticator._
   def apply(service: HttpService[IO], authenticator: AuthZeroAuthenticator): HttpService[IO] = {
     Kleisli { req =>
       authenticator.authenticate(req) match {

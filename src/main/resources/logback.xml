@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <appender name="ELASTIC" class="com.internetitem.logback.elasticsearch.ElasticsearchAppender">
+    <url>https://${ETP_SERVICE_API_ES_USER}:${ETP_SERVICE_API_ES_PASS}@${ETP_SERVICE_API_ES_ENDPOINT}/_bulk</url>
+    <index>log-dit-%date{yyyy-MM-dd}</index>
+    <type>tester</type>
+    <authentication class="com.internetitem.logback.elasticsearch.config.BasicAuthentication" /> <!-- optional -->
+    <includeMdc>true</includeMdc>
+    <properties>
+      <property>
+        <name>host</name>
+        <value>${HOSTNAME}</value>
+        <allowEmpty>false</allowEmpty>
+      </property>
+      <property>
+        <name>severity</name>
+        <value>%level</value>
+      </property>
+      <property>
+        <name>thread</name>
+        <value>%thread</value>
+      </property>
+      <property>
+        <name>stacktrace</name>
+        <value>%ex</value>
+      </property>
+      <property>
+        <name>logger</name>
+        <value>%logger</value>
+      </property>
+    </properties>
+    <headers>
+      <header>
+        <name>Content-Type</name>
+        <value>application/x-ndjson</value>
+      </header>
+    </headers>
+  </appender>
+
+  <logger name="RequestResponse" level="INFO" additivity="false">
+    <appender-ref ref="ELASTIC"/>
+    <appender-ref ref="STDOUT" />
+  </logger>
+
+  <root level="info">
+    <appender-ref ref="STDOUT" />
+  </root>
+</configuration>

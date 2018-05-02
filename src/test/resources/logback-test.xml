@@ -1,0 +1,18 @@
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%r [%thread] %-5level %logger{20} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="TEST_APPENDER" class="com.ovoenergy.evse.middleware.logging.TestAppender">
+    </appender>
+
+    <logger name="mockLogger" additivity="false" level="TRACE">
+        <appender-ref ref="TEST_APPENDER" />
+    </logger>
+
+    <root level="WARN">
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>

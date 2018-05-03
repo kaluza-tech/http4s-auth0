@@ -1,8 +1,7 @@
-val catsVersion = "1.0.1"
+val catsVersion = "1.1.0"
 val circeVersion = "0.9.2"
-val fs2Version = "0.10.2"
+val fs2Version = "0.10.3"
 val http4sVersion = "0.18.2"
-
 
 // TODO: make imports minimal
 lazy val mainDependencies = Seq(
@@ -10,14 +9,8 @@ lazy val mainDependencies = Seq(
   "co.fs2" %% "fs2-core" % fs2Version,
   "io.circe" %% "circe-generic" % circeVersion,
   "org.http4s" %% "http4s-circe" % http4sVersion,
-//  "org.typelevel" %% "cats-free" % catsVersion,
   "org.http4s" %% "http4s-blaze-server" % http4sVersion,
   "org.http4s" %% "http4s-dsl" % http4sVersion,
-//  "io.circe" %% "circe-parser" % circeVersion,
-//  "io.circe" %% "circe-java8" % circeVersion,
-//  "com.github.pureconfig" %% "pureconfig" % "0.8.0",
-//  "com.beachape" %% "enumeratum" % "1.5.13",
-//  "com.beachape" %% "enumeratum-circe" % "1.5.16",
   "com.pauldijou" %% "jwt-circe" % "0.16.0",
   "com.auth0" % "jwks-rsa" % "0.3.0",
   "org.http4s" %% "http4s-blaze-client" % http4sVersion,
@@ -28,14 +21,15 @@ lazy val mainDependencies = Seq(
 lazy val testDependencies = Seq(
   "com.github.tomakehurst" % "wiremock" % "2.8.0",
   "org.scalacheck" % "scalacheck_2.12" % "1.13.5",
-  "org.scalatest" %% "scalatest" % "3.0.5"
+  "org.scalatest" %% "scalatest" % "3.0.5",
+  "org.slf4j" % "slf4j-nop" % "1.7.22"
 ).map(_ % "test")
 
 lazy val root = (project in file(".")).
   settings(
     inThisBuild(List(
       organization := "com.ovoenergy",
-      scalaVersion := "2.12.3"
+      scalaVersion := "2.12.6"
     )),
     name := "http4s-auth0",
     description := "Client and server middleware for http4s to enable use of Auth0",

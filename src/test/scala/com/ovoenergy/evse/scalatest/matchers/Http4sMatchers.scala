@@ -8,6 +8,10 @@ import org.scalatest.matchers._
 import scala.reflect.ClassTag
 import scala.util.Try
 
+/**
+  * matchers for use with scalatest
+  * TODO: this should probably be split out into its own project or added as a PR for the http4s project to include in addition to the specs2 code
+  */
 trait Http4sMatchers extends Matchers {
 
   class BeUnhandledMatcher extends Matcher[Option[Response[IO]]] {

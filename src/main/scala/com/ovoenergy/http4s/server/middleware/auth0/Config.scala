@@ -9,4 +9,5 @@ import org.http4s.Status
   *                           In some cases we would like this to be simply Unauthorized, in others we may
   *                           prefer NotFound to completely hide resources that the user does not have access to.
   */
-final case class Config(jwkProvider: JwkProvider, unAuthorizedStatus: Status = Status.Unauthorized)
+final case class Config(jwkProvider: JwkProvider,
+                        unAuthorizedStatus: Status = Status.Unauthorized)

@@ -60,12 +60,12 @@ class Authenticator(val config: Config) {
 
     for {
       // NOTE: would be nice if this destructuring could be done in one line, Scala can't right now
-      decoded <- JwtCirce.decodeJsonAll(token.value, jwtOptions).toEither.left.map(DecodingFailure)
+      decoded <- JwtCirce.decodeJsonAll(token.value, jwtOptions).toEither.left.map(KeyIdentityDecodingFailure)
 
       (header, _, _) = decoded
 
       // TODO: could have a different error for this decoding failure, or change the message to be informative
-      kid <- header.hcursor.get[String]("kid").left.map(DecodingFailure)
+      kid <- header.hcursor.get[String]("kid").left.map(KeyIdentityDecodingFailure)
 
     } yield KeyIdentity(kid)
   }
@@ -97,15 +97,15 @@ object Authenticator {
     }
 
     final case class KeyIdentityNotFound(keyIdentity: KeyIdentity, cause: Throwable) extends Error {
-      val msg: String = s"cannot find key identity ${keyIdentity.value} - exception: ${cause.getMessage}"
+      val msg: String = s"cannot find key identity '${keyIdentity.value}' - ${cause.getMessage}"
     }
 
     final case class InvalidPublicKey(cause: Throwable) extends Error {
-      val msg: String = cause.getMessage
+      val msg: String = s"invalid public key - ${cause.getMessage}"
     }
 
-    final case class DecodingFailure(cause: Throwable) extends Error {
-      val msg: String = cause.getMessage
+    final case class KeyIdentityDecodingFailure(cause: Throwable) extends Error {
+      val msg: String = s"key identity decoding failure - ${cause.getMessage}"
     }
 
   }

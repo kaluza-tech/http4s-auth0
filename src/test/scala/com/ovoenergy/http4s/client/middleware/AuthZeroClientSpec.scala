@@ -1,4 +1,4 @@
-package com.ovoenergy.evse.service.client.middleware
+package com.ovoenergy.http4s.client.middleware
 
 import cats.effect.IO
 import com.github.tomakehurst.wiremock.WireMockServer

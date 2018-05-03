@@ -20,7 +20,6 @@ import scala.util.Try
   *       off multiple requests to the Auth0 backend to generate a new one if
   *       the token was not present or had become invalid.
   * @todo Clean up case-logic for retry into something neater
-  * @todo Pull it out into a separate library that other projects can use
   */
 class AuthZeroClient(val config: AuthZeroClientConfig, val client: Client[IO]) {
   private implicit val authZeroErrorBodyEntityEncoder: EntityEncoder[IO, AuthZeroErrorBody] = jsonEncoderOf
@@ -116,6 +115,7 @@ object AuthZeroClient {
 
   type AuthZeroToken = String
 
+  @SuppressWarnings(Array("org.wartremover.warts.Nothing"))
   def apply(config: AuthZeroClientConfig)(client: Client[IO]): Client[IO] = {
     val authClient = new AuthZeroClient(config, client)
 

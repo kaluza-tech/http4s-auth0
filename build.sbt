@@ -3,6 +3,8 @@ val circeVersion = "0.9.2"
 val fs2Version = "0.10.2"
 val http4sVersion = "0.18.2"
 
+
+// TODO: make imports minimal
 lazy val mainDependencies = Seq(
   "org.typelevel" %% "cats-core" % catsVersion,
   "co.fs2" %% "fs2-core" % fs2Version,
@@ -23,13 +25,11 @@ lazy val mainDependencies = Seq(
   "io.circe" %% "circe-literal" % circeVersion
 )
 
-
 lazy val testDependencies = Seq(
-  //  "com.github.tomakehurst" % "wiremock" % "2.8.0",
-  //  "org.scalacheck" % "scalacheck_2.12" % "1.13.5",
+  "com.github.tomakehurst" % "wiremock" % "2.8.0",
+  "org.scalacheck" % "scalacheck_2.12" % "1.13.5",
   "org.scalatest" %% "scalatest" % "3.0.5"
 ).map(_ % "test")
-
 
 lazy val root = (project in file(".")).
   settings(
@@ -38,7 +38,7 @@ lazy val root = (project in file(".")).
       scalaVersion := "2.12.3"
     )),
     name := "http4s-auth0",
-    description := "Client and server middleware to enable use of Auth0",
+    description := "Client and server middleware for http4s to enable use of Auth0",
     libraryDependencies ++= mainDependencies ++ testDependencies,
     coverageMinimum := 100,
     coverageFailOnMinimum := true,

@@ -124,6 +124,8 @@ object AuthZeroAuthenticator {
   */
 object AuthZeroMiddleware {
   import com.ovoenergy.http4s.server.middleware.AuthZeroAuthenticator._
+
+  @SuppressWarnings(Array("org.wartremover.warts.Nothing","org.wartremover.warts.Any"))
   def apply(service: HttpService[IO], authenticator: AuthZeroAuthenticator): HttpService[IO] = {
     Kleisli { req =>
       authenticator.authenticate(req) match {

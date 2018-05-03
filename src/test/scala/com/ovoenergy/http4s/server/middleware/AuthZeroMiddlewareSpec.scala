@@ -1,12 +1,11 @@
-package com.ovoenergy.evse
-package middleware
+package com.ovoenergy.http4s.server.middleware
 
+import cats.effect.IO
 import com.auth0.jwk.UrlJwkProvider
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 import com.ovoenergy.evse.scalatest.matchers.Http4sMatchers
-import com.ovoenergy.http4s.server.middleware.{AuthZeroAuthenticator, AuthZeroMiddleware}
 import org.http4s.Credentials.Token
 import org.http4s._
 import org.http4s.dsl.io._

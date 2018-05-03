@@ -1,23 +1,21 @@
-package com.ovoenergy.http4s.server.middleware
+package com.ovoenergy.http4s.server.middleware.auth0
 
-import cats.data.{Kleisli, OptionT}
 import cats.effect.IO
 import cats.syntax.either._
-import com.auth0.jwk.JwkProvider
-import com.ovoenergy.http4s.server.middleware.AuthZeroAuthenticator.Error._
+import com.ovoenergy.http4s.server.middleware.auth0.Authenticator.Error._
 import org.http4s._
 import org.http4s.headers.Authorization
 import pdi.jwt.{Jwt, JwtCirce, JwtOptions}
 
 import scala.util.Try
 
-/** Authenticator for AuthZero middleware
+/** Authenticator for Auth0 middleware
   *
-  * @param jwkProvider JSON Web Key provider
+  * @param config Configuration
   */
-class AuthZeroAuthenticator(val jwkProvider: JwkProvider) {
+class Authenticator(val config: Config) {
 
-  import AuthZeroAuthenticator._
+  import Authenticator._
 
   /** Authenticate an HTTP request
     *
@@ -37,18 +35,14 @@ class AuthZeroAuthenticator(val jwkProvider: JwkProvider) {
 
       keyIdentity <- extractKeyIdentity(token)
 
-      jwk <- Try(jwkProvider.get(keyIdentity.value))
+      jwk <- Try(config.jwkProvider.get(keyIdentity.value))
         .toEither.left.map(exc => KeyIdentityNotFound(keyIdentity, exc))
 
       // TODO: this is an external dependency, when we split this out of this codebase it should be easier to better
       // tests around the external services requried for Auth0
-      // $COVERAGE-OFF$
       publicKey <- Try(jwk.getPublicKey).toEither.left.map(InvalidPublicKey)
-      // $COVERAGE-ON$
-    } yield Jwt.isValid(token.value, publicKey) match {
-      case true => Authenticated
-      case false => NotAuthenticated
-    }
+
+    } yield if(Jwt.isValid(token.value, publicKey)) Authenticated else NotAuthenticated
   }
 
   private def extractToken(authorization: Authorization): Result[BearerToken] = {
@@ -67,15 +61,17 @@ class AuthZeroAuthenticator(val jwkProvider: JwkProvider) {
     for {
       // NOTE: would be nice if this destructuring could be done in one line, Scala can't right now
       decoded <- JwtCirce.decodeJsonAll(token.value, jwtOptions).toEither.left.map(DecodingFailure)
+
       (header, _, _) = decoded
 
+      // TODO: could have a different error for this decoding failure, or change the message to be informative
       kid <- header.hcursor.get[String]("kid").left.map(DecodingFailure)
 
     } yield KeyIdentity(kid)
   }
 }
 
-object AuthZeroAuthenticator {
+object Authenticator {
   type Result[A] = Either[Error, A]
 
   sealed trait AuthenticatedStatus
@@ -104,11 +100,9 @@ object AuthZeroAuthenticator {
       val msg: String = s"cannot find key identity ${keyIdentity.value} - exception: ${cause.getMessage}"
     }
 
-    // $COVERAGE-OFF$
     final case class InvalidPublicKey(cause: Throwable) extends Error {
       val msg: String = cause.getMessage
     }
-    // $COVERAGE-ON$
 
     final case class DecodingFailure(cause: Throwable) extends Error {
       val msg: String = cause.getMessage
@@ -116,28 +110,4 @@ object AuthZeroAuthenticator {
 
   }
 
-}
-
-/** http4s middleware to transparently authenticate using Auth0 JWT tokens
-  *
-  * TODO: generalise and extract from this project
-  */
-object AuthZeroMiddleware {
-  import com.ovoenergy.http4s.server.middleware.AuthZeroAuthenticator._
-
-  @SuppressWarnings(Array("org.wartremover.warts.Nothing","org.wartremover.warts.Any"))
-  def apply(service: HttpService[IO], authenticator: AuthZeroAuthenticator): HttpService[IO] = {
-    Kleisli { req =>
-      authenticator.authenticate(req) match {
-        case Right(Authenticated) =>
-          service.run(req)
-        case Right(NotAuthenticated) =>
-          OptionT.pure(Response[IO](status = Status.NotFound))
-        case Left(_) =>
-          // TODO: logging would make debugging auth errors much easier
-          // TODO: make this configurable? - unauthorized vs notfound
-          OptionT.pure(Response[IO](status = Status.NotFound))
-      }
-    }
-  }
 }

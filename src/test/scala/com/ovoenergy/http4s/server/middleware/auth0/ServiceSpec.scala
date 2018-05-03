@@ -6,6 +6,7 @@ import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 import com.ovoenergy.evse.scalatest.matchers.Http4sMatchers
+import com.ovoenergy.http4s.server.middleware.auth0.{Authenticator, Config, Service}
 import org.http4s.Credentials.Token
 import org.http4s._
 import org.http4s.dsl.io._
@@ -13,56 +14,56 @@ import org.http4s.headers.Authorization
 import org.http4s.util.CaseInsensitiveString
 import org.scalatest.{BeforeAndAfterAll, OptionValues, WordSpec}
 
-class AuthZeroMiddlewareSpec extends WordSpec with Http4sMatchers with OptionValues with BeforeAndAfterAll {
+class ServiceSpec extends WordSpec with Http4sMatchers with OptionValues with BeforeAndAfterAll {
 
-  private val simpleService = HttpService[IO] {
-    case _ -> Root / "resource" => Ok()
-  }
-
-  private val baseRequest = Request[IO](GET, uri("/resource"))
-
-  "AuthZeroMiddleware" should {
+  "Service" should {
 
     "return 404 if no Authorization header is provided" in {
-      val service = AuthZeroMiddleware(simpleService, createAuthenticator)
+      val service = Service(simpleService, createAuthenticator)
       val request = baseRequest.withHeaders(Headers.empty)
       service.run(request).value.unsafeRunSync() should haveStatus(Status.NotFound)
     }
 
     "return 404 if no Bearer token is present in Authorization header" in {
-      val service = AuthZeroMiddleware(simpleService, createAuthenticator)
+      val service = Service(simpleService, createAuthenticator)
       val request = baseRequest.withHeaders(Headers(basicTokenHeader("basic-credentials")))
       service.run(request).value.unsafeRunSync() should haveStatus(Status.NotFound)
     }
 
     "return 404 if a bad Bearer token is supplied" in {
       val token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6IjJ0TEJuLVBtSHgzdXRfRkQ5dmJkSmtLNVUzV1FEMzk2US1nMExpRlg5U0kifQ.eyJpc3MiOiJldnNlIGRldmljZSBpbnRlZ3JhdGlvbiIsIm5iZiI6MTUxMzU0NDkwM30.OUK-Ipty21TIILhLg-ImFhNpfabXCb0BB-_eASjuj-QcVZdOZb42CIZAkSpjGbpScFjcBcM_kZh3OJnxP3uhj9hCRDqfDiu2YpoXitLwcNlvf_I-XfZxGCVFxZSiktcu3TMqL1JIPNWwpZoSIZvo3d0ubXmlxdjfXdGVC7Rk_YWjKWjVpxLOWuPfKplsCtpe07DTcpIkazzr7Nx4eFcrxajZUlBqgxPSznvTJN0jcaegB8_-HhoYyQPosox3haKFKxf1Cg9MslmVq746lTZWlDlq5no3WyIXmLiizWsit1fuSHFZIeWnIYQqsksgKNe0z_6Kv4XEsHlIHeXKgw0FJA"
-      val service = AuthZeroMiddleware(simpleService, createAuthenticator)
+      val service = Service(simpleService, createAuthenticator)
       val request = baseRequest.withHeaders(Headers(bearerTokenHeader(token)))
       service.run(request).value.unsafeRunSync() should haveStatus(Status.NotFound)
     }
 
     "return 404 if an unsigned Bearer token is supplied" in {
       val token= "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6IjZfWWZvbHh4elJZUDR5cmdFSWlOaXRVNzNpUEVGNnlhQTdVR29NNk5KRXcifQ.eyJpc3MiOiJldnNlIGRldmljZSBpbnRlZ3JhdGlvbiIsIm5iZiI6MTUxMzU5MDU3NX0."
-      val service = AuthZeroMiddleware(simpleService, createAuthenticator)
+      val service = Service(simpleService, createAuthenticator)
       val request = baseRequest.withHeaders(Headers(bearerTokenHeader(token)))
       service.run(request).value.unsafeRunSync() should haveStatus(Status.NotFound)
     }
 
     "return 404 if no 'kid' present in supplied Bearer token" in {
       val token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJldnNlIGRldmljZSBpbnRlZ3JhdGlvbiIsIm5iZiI6MTUxMzU5MDgxMH0.X4aacxq-E-SMyUGjXfbfPG0UZdYXXj6t_1Y47-8C6SPaQcsKE5g8YYMoaASu5KQU1php_BMKEwkiC1zVukEviCOcWw3ihhM9l9gogK99EdJF0BYTk8kkRXoM42QIED3ORScod-JcHGv2_yYVucaUMC1Fw-YAekyhxyMwBahrBsNAyDRCvZeE4yO9QrlFEb_KZkAaxYCuL_2o9ObWJ3EhpJSWFgeZUzD1uZ7SEPR9677HHPmaO8XCy_W76XjE5O17uacquFlOYAORkQAqqIYnVIlDyO5qw58Mk1vfAOskycOd0hLLzTjwItsZmQhqSOCrgOjz69XTWw2qrVvm0iGRQA"
-      val service = AuthZeroMiddleware(simpleService, createAuthenticator)
+      val service = Service(simpleService, createAuthenticator)
       val request = baseRequest.withHeaders(Headers(bearerTokenHeader(token)))
       service.run(request).value.unsafeRunSync() should haveStatus(Status.NotFound)
     }
 
     "return 200 if a good Bearer token is supplied" in {
       val token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6IjZfWWZvbHh4elJZUDR5cmdFSWlOaXRVNzNpUEVGNnlhQTdVR29NNk5KRXcifQ.eyJpc3MiOiJldnNlIGRldmljZSBpbnRlZ3JhdGlvbiIsIm5iZiI6MTUxMzQ0MDIxOX0.O0CO-fiNWiqCYGkrU0AuJiLVcCGPEEFKWFHvYg1yrmo2bIu0dIlAluL2ZpHk1a5N1dj-mG1qNnhxaNsTMXjJVxFLRquS58OPI1_cJUwdBbGijUm8eH1Dh1VTeKqg5unqeeZ6baoqqWrKv98B_QxpafQhVAthyj18c_KfrXIKGdVQCpKyY6_2B_3b7-f0iUn17S2-VTRwARzRphHoqY27HR7n4mmkSFvuhMEnE5coOuv4z4Hxx8ENYksWSQ0k4qb42qE03YNX7h7Sf0IsaclJgb6VZHkiX7p1RZIb_xjOVIABF-HCj0J7E77vNH9wqJAhbRITNV1Qp737D7fexYYjXA"
-      val service = AuthZeroMiddleware(simpleService, createAuthenticator)
+      val service = Service(simpleService, createAuthenticator)
       val request = baseRequest.withHeaders(Headers(bearerTokenHeader(token)))
       service.run(request).value.unsafeRunSync() should haveStatus(Status.Ok)
      }
   }
+
+  private val simpleService = HttpService[IO] {
+    case _ -> Root / "resource" => Ok()
+  }
+
+  private val baseRequest = Request[IO](GET, uri("/resource"))
 
   private val port = 8080
 
@@ -76,7 +77,7 @@ class AuthZeroMiddlewareSpec extends WordSpec with Http4sMatchers with OptionVal
 
   private def basicTokenHeader(token: String): Header = Authorization(Token(CaseInsensitiveString("basic"), token))
 
-  private def createAuthenticator: AuthZeroAuthenticator = new AuthZeroAuthenticator(new UrlJwkProvider(jwksDomain))
+  private def createAuthenticator: Authenticator = new Authenticator(Config(new UrlJwkProvider(jwksDomain)))
 
   override def beforeAll(): Unit = {
     wireMockServer.start()

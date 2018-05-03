@@ -3,7 +3,10 @@ val circeVersion = "0.9.2"
 val fs2Version = "0.10.3"
 val http4sVersion = "0.18.2"
 
-// TODO: make imports minimal
+val wiremockVersion = "2.8.0"
+val scalacheckVersion = "1.13.5"
+val scalatestVersion = "3.0.5"
+
 lazy val mainDependencies = Seq(
   "org.typelevel" %% "cats-core" % catsVersion,
   "co.fs2" %% "fs2-core" % fs2Version,
@@ -14,14 +17,13 @@ lazy val mainDependencies = Seq(
   "com.pauldijou" %% "jwt-circe" % "0.16.0",
   "com.auth0" % "jwks-rsa" % "0.3.0",
   "org.http4s" %% "http4s-blaze-client" % http4sVersion,
-  "io.circe" %% "circe-generic-extras" % circeVersion,
-  "io.circe" %% "circe-literal" % circeVersion
+  "io.circe" %% "circe-generic-extras" % circeVersion
 )
 
 lazy val testDependencies = Seq(
-  "com.github.tomakehurst" % "wiremock" % "2.8.0",
-  "org.scalacheck" % "scalacheck_2.12" % "1.13.5",
-  "org.scalatest" %% "scalatest" % "3.0.5",
+  "com.github.tomakehurst" % "wiremock" % wiremockVersion,
+  "org.scalacheck" %% "scalacheck" % scalacheckVersion,
+  "org.scalatest" %% "scalatest" % scalatestVersion,
   "org.slf4j" % "slf4j-nop" % "1.7.22"
 ).map(_ % "test")
 
@@ -37,7 +39,8 @@ lazy val root = (project in file(".")).
     coverageMinimum := 100,
     coverageFailOnMinimum := true,
     // TODO: decide where we releae artifacts to
-    resolvers += Resolver.bintrayRepo("ovotech", "maven-private"),
+//    resolvers += Resolver.bintrayRepo("ovotech", "maven-private"),
+
     credentials += Credentials("Bintray", "dl.bintray.com", sys.env("BINTRAY_USER"), sys.env("BINTRAY_PASS")),
     bintrayOrganization := Some("ovotech"),
     bintrayRepository := "maven",

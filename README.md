@@ -1,5 +1,7 @@
 # http4s-auth0
 
+[![CircleCI](https://circleci.com/gh/ovotech/http4s-auth0.svg?style=svg)](https://circleci.com/gh/ovotech/http4s-auth0)
+
 Middleware to allow http4s clients and servers to use the Auth0 system for backend API authentication using JWT.
 
 # Client

@@ -1,0 +1,58 @@
+# Scala CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/sample-config/ for more details
+#
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/openjdk:8-jdk
+
+    working_directory: ~/repo
+
+    environment:
+      JVM_OPTS: -Xmx3200m
+      TERM: dumb
+
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ arch }}-{{ checksum "build.sbt" }}
+          - v1-dependencies-
+
+      - run: sudo apt-get update
+      - run: sudo apt-get install -y apt-transport-https
+      - run: |
+          if [ ! -d /etc/apt/sources.list.d/sbt.list ]
+          then
+            echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee -a /etc/apt/sources.list.d/sbt.list
+            sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
+          fi
+      - run: sudo apt-get update
+      - run: sudo apt-get install -y sbt
+
+      - run: cat /dev/null | sbt scalastyle
+      - run: cat /dev/null | sbt coverage test:compile
+
+      - save_cache:
+          paths:
+            - ~/.m2
+            - ~/.ivy2/cache
+            - ~/.sbt
+            - target/resolution-cache
+            - target/streams
+            - project/target/resolution-cache
+            - project/target/streams
+          key: v1-dependencies-{{ arch }}-{{ checksum "build.sbt" }}
+
+      - run: cat /dev/null | sbt coverage test:test
+      - run: cat /dev/null | sbt coverageReport
+
+      - store_test_results:
+          path: target/test-reports
+      - store_artifacts:
+          path: target/scala-2.12/coverage-report
+      - store_artifacts:
+           path: target/scala-2.12/scoverage-report

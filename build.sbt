@@ -37,6 +37,7 @@ lazy val root = (project in file(".")).
     )),
     name := "http4s-auth0",
     description := "Client and server middleware for http4s to enable use of Auth0",
+    licenses += ("Apache-2.0", url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
     libraryDependencies ++= mainDependencies ++ testDependencies,
     coverageMinimum := 100,
     coverageFailOnMinimum := true,

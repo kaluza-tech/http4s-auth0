@@ -1,12 +1,13 @@
 package com.ovoenergy.http4s.client.middleware.auth0
 
-import cats.effect.IO
+import scala.concurrent.ExecutionContext.global
+
+import cats.effect._
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 import com.github.tomakehurst.wiremock.stubbing.Scenario._
-import fs2.Scheduler
-import org.http4s.client.blaze.Http1Client
+import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.client.{Client => Http4sClient, _}
 import org.http4s.{Method, Status, Uri, _}
 import org.scalatest._
@@ -14,9 +15,7 @@ import org.scalatest.prop.GeneratorDrivenPropertyChecks
 
 class ClientSpec extends
   WordSpec with Matchers with EitherValues with GeneratorDrivenPropertyChecks with BeforeAndAfterAll with BeforeAndAfterEach {
-
-  implicit val (scheduler, shutDown): (Scheduler, IO[Unit]) = Scheduler.allocate[IO](corePoolSize = 2, threadPrefix = "service-client-workers").unsafeRunSync()
-
+  implicit val cs: ContextShift[IO] = IO.contextShift(global)
   "Client" when {
 
     "configured with good credentials" should {
@@ -32,13 +31,13 @@ class ClientSpec extends
           .withHeader(authorizationHeader, equalTo(bearerToken(token)))
           .willReturn(aResponse().withBody(resourceBody)))
 
-        val client = createSubject()
+        testWithClient(config) { client =>
+          val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
 
-        val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
+          val result = client.expect[String](request).attempt.unsafeRunSync()
 
-        val result = client.expect[String](request).attempt.unsafeRunSync()
-
-        result.right.value shouldEqual resourceBody
+          result.right.value shouldEqual resourceBody
+        }
       }
 
       "request only one token from Auth0 for multiple requests" in {
@@ -52,19 +51,19 @@ class ClientSpec extends
           .withHeader(authorizationHeader, equalTo(bearerToken(token)))
           .willReturn(aResponse().withBody(resourceBody)))
 
-        val client = createSubject()
+        testWithClient(config) { client =>
+          val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
 
-        val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
+          val firstResult = client.expect[String](request).attempt.unsafeRunSync()
 
-        val firstResult = client.expect[String](request).attempt.unsafeRunSync()
+          val secondResult = client.expect[String](request).attempt.unsafeRunSync()
 
-        val secondResult = client.expect[String](request).attempt.unsafeRunSync()
+          firstResult.right.value shouldEqual resourceBody
 
-        firstResult.right.value shouldEqual resourceBody
+          secondResult.right.value shouldEqual resourceBody
 
-        secondResult.right.value shouldEqual resourceBody
-
-        verify(lessThanOrExactly(1), postRequestedFor(urlEqualTo(authZeroUri.path)))
+          verify(lessThanOrExactly(1), postRequestedFor(urlEqualTo(authZeroUri.path)))
+        }
       }
 
 
@@ -94,15 +93,15 @@ class ClientSpec extends
           .withHeader(authorizationHeader, equalTo(bearerToken(token)))
           .willReturn(aResponse().withBody(resourceBody)))
 
-        val client = createSubject()
+        testWithClient(config) { client =>
+          val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
 
-        val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
+          val result = client.expect[String](request).attempt.unsafeRunSync()
 
-        val result = client.expect[String](request).attempt.unsafeRunSync()
+          result.right.value shouldEqual resourceBody
 
-        result.right.value shouldEqual resourceBody
-
-        verify(moreThan(1), postRequestedFor(urlEqualTo(authZeroUri.path)))
+          verify(moreThan(1), postRequestedFor(urlEqualTo(authZeroUri.path)))
+        }
       }
 
       "retry for a new token if the one it has results in an Unauthorized response" in {
@@ -131,15 +130,15 @@ class ClientSpec extends
           .withHeader(authorizationHeader, equalTo(bearerToken(token)))
           .willReturn(aResponse().withBody(resourceBody)))
 
-        val client = createSubject()
+        testWithClient(config) { client =>
+          val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
 
-        val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
+          val result = client.expect[String](request).attempt.unsafeRunSync()
 
-        val result = client.expect[String](request).attempt.unsafeRunSync()
+          result.right.value shouldEqual resourceBody
 
-        result.right.value shouldEqual resourceBody
-
-        verify(moreThan(1), postRequestedFor(urlEqualTo(authZeroUri.path)))
+          verify(moreThan(1), postRequestedFor(urlEqualTo(authZeroUri.path)))
+        }
       }
 
       "fail when auth0 is unavailable" in {
@@ -149,13 +148,13 @@ class ClientSpec extends
           .withHeader(authorizationHeader, equalTo(bearerToken(token)))
           .willReturn(aResponse().withBody(resourceBody)))
 
-        val client = createSubject(config = config)
+        testWithClient(config) { client =>
+          val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
 
-        val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
+          val result = client.expect[String](request).attempt.unsafeRunSync()
 
-        val result = client.expect[String](request).attempt.unsafeRunSync()
-
-        result.left.value shouldEqual UnexpectedStatus(Status.RequestTimeout)
+          result.left.value shouldEqual UnexpectedStatus(Status.RequestTimeout)
+        }
       }
     }
 
@@ -172,18 +171,16 @@ class ClientSpec extends
           .withHeader(authorizationHeader, equalTo(bearerToken(token)))
           .willReturn(aResponse().withBody(resourceBody)))
 
-        val client = createSubject()
+        testWithClient(config) { client =>
+          val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
 
-        val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
+          val result = client.expect[String](request).attempt.unsafeRunSync()
 
-        val result = client.expect[String](request).attempt.unsafeRunSync()
-
-        result.left.value shouldEqual UnexpectedStatus(Status.Unauthorized)
+          result.left.value shouldEqual UnexpectedStatus(Status.Unauthorized)
+        }
       }
     }
   }
-
-  private val httpClient: Http4sClient[IO] = Http1Client[IO]().unsafeRunSync()
 
   private val authorizationHeader = "Authorization"
 
@@ -202,9 +199,13 @@ class ClientSpec extends
   private val resourceBody = "Hello World"
 
   private def defaultConfig() = Config(baseUri, "audience", "client-identity", "client-secret")
-
-  private def createSubject(config: Config = defaultConfig()): Http4sClient[IO] = {
-    Client(config)(httpClient)
+  private def testWithClient(config: Config = defaultConfig())(test: Http4sClient[IO] => Unit): Unit = {
+    val testResult = for {
+      httpClient <- BlazeClientBuilder[IO](global).stream
+      client = Client(config)(httpClient)
+      _ = test(client)
+    } yield ()
+    testResult.compile.drain.unsafeRunSync()
   }
 
   private def bearerToken(token: String): String = s"Bearer $token"
@@ -242,9 +243,6 @@ class ClientSpec extends
 
   override def afterEach(): Unit = wireMockServer.resetAll()
 
-  override def afterAll(): Unit = {
-    wireMockServer.stop()
-    shutDown.unsafeRunSync()
-  }
+  override def afterAll(): Unit = wireMockServer.stop()
 }
 

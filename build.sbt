@@ -1,9 +1,10 @@
-val catsVersion = "1.1.0"
-val circeVersion = "0.9.3"
-val fs2Version = "0.10.3"
-val http4sVersion = "0.18.10"
-val jwtCirceVersion = "0.16.0"
-val jwksRsaVersion = "0.4.0"
+val catsVersion = "1.4.0"
+val circeVersion = "0.10.0"
+val fs2Version = "1.0.0-RC1"
+val http4sVersion = "0.19.0-M2"
+
+val jwtCirceVersion = "0.18.0"
+val jwksRsaVersion = "0.6.0"
 
 val wiremockVersion = "2.17.0"
 val scalacheckVersion = "1.14.0"
@@ -16,7 +17,7 @@ lazy val mainDependencies = Seq(
   "org.http4s" %% "http4s-circe" % http4sVersion,
   "org.http4s" %% "http4s-blaze-server" % http4sVersion,
   "org.http4s" %% "http4s-dsl" % http4sVersion,
-  "com.pauldijou" %% "jwt-circe" % "0.16.0",
+  "com.pauldijou" %% "jwt-circe" % jwtCirceVersion,
   "com.auth0" % "jwks-rsa" % jwksRsaVersion,
   "org.http4s" %% "http4s-blaze-client" % http4sVersion,
   "io.circe" %% "circe-generic-extras" % circeVersion

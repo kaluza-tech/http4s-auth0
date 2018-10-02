@@ -95,7 +95,7 @@ class ServiceSpec extends WordSpec with Http4sMatchers with OptionValues with Be
      }
   }
 
-  private val simpleService = HttpService[IO] {
+  private val simpleService = HttpRoutes.of[IO] {
     case _ -> Root / "resource" => Ok()
   }
 

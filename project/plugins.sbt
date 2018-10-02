@@ -1,5 +1,6 @@
 // general utility
 addSbtPlugin("io.spray" % "sbt-revolver" % "0.9.0")
+addSbtPlugin("au.com.onegeek" %% "sbt-dotenv" % "1.2.88")
 
 // code quality
 addSbtPlugin("org.wartremover" % "sbt-wartremover" % "2.2.1")

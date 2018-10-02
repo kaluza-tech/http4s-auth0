@@ -35,7 +35,7 @@ class Client(val config: Config, val client: Http4sClient[IO]) {
         }
       case Left(err) =>
         IO(currentToken = None)
-          .flatMap(_ => errorResponse(err))
+          .map(_ => errorResponse(err))
     })
   }
 
@@ -80,7 +80,7 @@ class Client(val config: Config, val client: Http4sClient[IO]) {
     val uri: Uri = config.uri / "oauth" / "token"
 
     client
-      .expect[TokenResponse](Request[IO](method = Method.POST, uri = uri).withBody(request))
+      .expect[TokenResponse](Request[IO](method = Method.POST, uri = uri).withEntity(request))
       .map(_.accessToken.asRight[Error])
       .handleError {
         case e: ConnectException => AuthZeroUnavailable(e).asLeft[AuthZeroToken]
@@ -91,17 +91,15 @@ class Client(val config: Config, val client: Http4sClient[IO]) {
 
   private def enhanceRequest(req: Request[IO], token: AuthZeroToken): Request[IO] = req.putHeaders(Header("Authorization", s"Bearer $token"))
 
-  private def errorResponse(err: Error): IO[DisposableResponse[IO]] = {
+  private def errorResponse(err: Error): DisposableResponse[IO] = {
     val status = err match {
       case NotAuthorized() => Status.Unauthorized
       case AuthZeroUnavailable(_) => Status.RequestTimeout
     }
 
-    Response[IO](status = status)
-      .withBody(ErrorBody(err.msg))
-      .map(response =>
-        DisposableResponse(response, nullOpDispose
-      ))
+    val entityResponse = Response[IO](status = status).withEntity(ErrorBody(err.msg))
+
+    DisposableResponse(entityResponse, nullOpDispose)
   }
 
   private val nullOpDispose = IO.pure(())

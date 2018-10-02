@@ -11,7 +11,7 @@ object Service {
   import Authenticator._
 
   @SuppressWarnings(Array("org.wartremover.warts.Nothing","org.wartremover.warts.Any"))
-  def apply(service: HttpService[IO], config: Config): HttpService[IO] = {
+  def apply(service: HttpRoutes[IO], config: Config): HttpRoutes[IO] = {
     val authenticator: Authenticator = new Authenticator(config)
 
     Kleisli { req =>

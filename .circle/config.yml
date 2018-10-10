@@ -56,3 +56,9 @@ jobs:
           path: target/scala-2.12/coverage-report
       - store_artifacts:
            path: target/scala-2.12/scoverage-report
+
+workflows:
+  version: 2
+  http4s-auth0:
+    jobs:
+    - build

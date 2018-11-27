@@ -1,6 +1,6 @@
 val catsVersion = "1.4.0"
 val circeVersion = "0.10.0"
-val fs2Version = "1.0.0-RC1"
+val fs2Version = "1.0.0"
 val http4sVersion = "0.19.0-M2"
 
 val jwtCirceVersion = "0.18.0"

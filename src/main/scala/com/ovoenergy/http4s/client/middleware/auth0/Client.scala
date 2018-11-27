@@ -4,7 +4,9 @@ import java.net.ConnectException
 
 import cats.data.{EitherT, Kleisli}
 import cats.effect.Sync
+import cats.effect.concurrent.Ref
 import cats.implicits._
+import com.ovoenergy.http4s.client.middleware.auth0.Client.AuthZeroToken
 import com.ovoenergy.http4s.client.middleware.auth0.Client.Error._
 import org.http4s.circe._
 import org.http4s.client.{DisposableResponse, Client => Http4sClient}
@@ -20,23 +22,23 @@ import org.http4s._
   *       the token was not present or had become invalid.
   * @todo Clean up case-logic for retry into something neater
   */
-class Client[F[_]: Sync](val config: Config, val client: Http4sClient[F]) {
+class Client[F[_]: Sync] private (val config: Config, val client: Http4sClient[F], currentToken: Ref[F, Option[AuthZeroToken]]) {
   private implicit val authZeroErrorBodyEntityEncoder: EntityEncoder[F, ErrorBody] = jsonEncoderOf
 
   import Client._
 
-  def open(req: Request[F]): F[DisposableResponse[F]] = {
-    retryRequest(req, currentToken, 1).flatMap({
-      case Right((response, token)) =>
-        Sync[F].delay {
-          currentToken = Some(token)
-          response
-        }
-      case Left(err) =>
-        Sync[F].delay(currentToken = None)
-          .map(_ => errorResponse(err))
-    })
-  }
+  def open(req: Request[F]): F[DisposableResponse[F]] =
+  for {
+    authToken <- currentToken.get
+    retry <- retryRequest(req, authToken, 1)
+  } yield retry match {
+    case Right((response, token)) =>
+      currentToken.modify(v => (v, Some(token)))
+      response
+    case Left(err) =>
+      currentToken.modify(v => (v, None))
+      errorResponse(err)
+    }
 
   @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
   private def retryRequest(req: Request[F], maybeToken: Option[AuthZeroToken], retries: Int): F[Result[ResponseAndToken[F]]] = {
@@ -100,8 +102,6 @@ class Client[F[_]: Sync](val config: Config, val client: Http4sClient[F]) {
   }
 
   private val nullOpDispose = Sync[F].pure(())
-
-  private var currentToken: Option[AuthZeroToken] = None
 }
 
 object Client {
@@ -112,10 +112,10 @@ object Client {
 
   @SuppressWarnings(Array("org.wartremover.warts.Nothing"))
   def apply[F[_]: Sync](config: Config)(client: Http4sClient[F]): Http4sClient[F] = {
-    val authClient = new Client(config, client)
+    val authClient = Ref.of[F, Option[AuthZeroToken]](None).map(t => new Client(config, client, t))
 
     def authenticatedOpen(req: Request[F]): F[DisposableResponse[F]] = {
-      authClient.open(req)
+      authClient.flatMap(_.open(req))
     }
 
     client.copy(open = Kleisli(authenticatedOpen))
@@ -138,5 +138,11 @@ object Client {
     }
 
   }
+
+  def create[F[_]: Sync](config: Config, http4sClient: Http4sClient[F]): F[Client[F]] =
+    for {
+      currentToken <- Ref.of[F, Option[AuthZeroToken]](None)
+      client = new Client[F](config, http4sClient, currentToken)
+    } yield client
 
 }

@@ -1,6 +1,5 @@
 package com.ovoenergy.http4s.server.middleware.auth0
 
-import cats.effect.IO
 import cats.syntax.either._
 import com.ovoenergy.http4s.server.middleware.auth0.Authenticator.Error._
 import org.http4s._
@@ -13,7 +12,7 @@ import scala.util.Try
   *
   * @param config Configuration
   */
-class Authenticator(val config: Config) {
+class Authenticator[F[_]](val config: Config) {
 
   import Authenticator._
 
@@ -22,7 +21,7 @@ class Authenticator(val config: Config) {
     * @param request The HTTP request to authenticate
     * @return Either the answer to whether the request was authentic or possibly an error message
     */
-  def authenticate(request: Request[IO]): Result[AuthenticatedStatus] = {
+  def authenticate(request: Request[F]): Result[AuthenticatedStatus] = {
     request.headers.get(Authorization) match {
       case None => AuthorizationHeaderNotFound().asLeft[AuthenticatedStatus]
       case Some(authorization) => validate(authorization)

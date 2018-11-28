@@ -1,10 +1,10 @@
 val catsVersion = "1.4.0"
-val circeVersion = "0.10.0"
+val circeVersion = "0.10.1"
 val fs2Version = "1.0.0"
 val http4sVersion = "0.19.0-M2"
 
-val jwtCirceVersion = "0.18.0"
-val jwksRsaVersion = "0.6.0"
+val jwtCirceVersion = "1.0.0"
+val jwksRsaVersion = "0.6.1"
 
 val wiremockVersion = "2.17.0"
 val scalacheckVersion = "1.14.0"

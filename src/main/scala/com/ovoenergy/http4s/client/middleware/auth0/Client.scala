@@ -27,18 +27,25 @@ class Client[F[_]: Sync] private (val config: Config, val client: Http4sClient[F
 
   import Client._
 
-  def open(req: Request[F]): F[DisposableResponse[F]] =
-  for {
-    authToken <- currentToken.get
-    retry <- retryRequest(req, authToken, 1)
-  } yield retry match {
+  @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
+  def open(req: Request[F]): F[DisposableResponse[F]] = {
+    val newResponse: F[(DisposableResponse[F], Option[AuthZeroToken])] = for {
+      authToken <- currentToken.get
+      retry <- retryRequest(req, authToken, 1)
+      newResponseAndToken = getResultAndToken(retry)
+    } yield newResponseAndToken
+    newResponse.flatMap(r => currentToken.update(_ => r._2))
+    newResponse.map(r => r._1)
+  }
+
+
+  private def getResultAndToken(retryResult: Result[(DisposableResponse[F], AuthZeroToken)])
+    : (DisposableResponse[F], Option[AuthZeroToken]) = retryResult match {
     case Right((response, token)) =>
-      currentToken.modify(v => (v, Some(token)))
-      response
+      (response, Some[AuthZeroToken](token))
     case Left(err) =>
-      currentToken.modify(v => (v, None))
-      errorResponse(err)
-    }
+      (errorResponse(err), Option.empty[AuthZeroToken])
+  }
 
   @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
   private def retryRequest(req: Request[F], maybeToken: Option[AuthZeroToken], retries: Int): F[Result[ResponseAndToken[F]]] = {
@@ -111,14 +118,14 @@ object Client {
   type AuthZeroToken = String
 
   @SuppressWarnings(Array("org.wartremover.warts.Nothing"))
-  def apply[F[_]: Sync](config: Config)(client: Http4sClient[F]): Http4sClient[F] = {
-    val authClient = Ref.of[F, Option[AuthZeroToken]](None).map(t => new Client(config, client, t))
+  def apply[F[_]: Sync](config: Config)(client: Http4sClient[F], clientToken: ClientToken[F]): F[Http4sClient[F]] = {
+    val authClient = new Client(config, client, clientToken.token)
 
     def authenticatedOpen(req: Request[F]): F[DisposableResponse[F]] = {
-      authClient.flatMap(_.open(req))
+      authClient.open(req)
     }
 
-    client.copy(open = Kleisli(authenticatedOpen))
+    Sync[F].pure(client.copy(open = Kleisli(authenticatedOpen)))
   }
 
   sealed trait Error extends Product with Serializable {
@@ -138,11 +145,11 @@ object Client {
     }
 
   }
+}
 
-  def create[F[_]: Sync](config: Config, http4sClient: Http4sClient[F]): F[Client[F]] =
-    for {
-      currentToken <- Ref.of[F, Option[AuthZeroToken]](None)
-      client = new Client[F](config, http4sClient, currentToken)
-    } yield client
-
+final class ClientToken[F[_]](val token: Ref[F, Option[AuthZeroToken]])
+object ClientToken {
+  def apply[F[_]: Sync]: F[ClientToken[F]] = for {
+    t <-  Ref.of[F, Option[AuthZeroToken]](None)
+  } yield new ClientToken[F](t)
 }

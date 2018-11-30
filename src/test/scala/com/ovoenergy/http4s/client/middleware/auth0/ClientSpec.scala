@@ -15,6 +15,8 @@ import org.scalatest.prop.GeneratorDrivenPropertyChecks
 
 class ClientSpec extends
   WordSpec with Matchers with EitherValues with GeneratorDrivenPropertyChecks with BeforeAndAfterAll with BeforeAndAfterEach {
+  import ClientSpec._
+
   implicit val cs: ContextShift[IO] = IO.contextShift(global)
   "Client" when {
 
@@ -31,7 +33,7 @@ class ClientSpec extends
           .withHeader(authorizationHeader, equalTo(bearerToken(token)))
           .willReturn(aResponse().withBody(resourceBody)))
 
-        testWithClient(config) { client =>
+        testWithClient(config, clientToken) { client =>
           val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
 
           val result = client.expect[String](request).attempt.unsafeRunSync()
@@ -51,7 +53,7 @@ class ClientSpec extends
           .withHeader(authorizationHeader, equalTo(bearerToken(token)))
           .willReturn(aResponse().withBody(resourceBody)))
 
-        testWithClient(config) { client =>
+        testWithClient(config, clientToken) { client =>
           val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
 
           val firstResult = client.expect[String](request).attempt.unsafeRunSync()
@@ -93,7 +95,7 @@ class ClientSpec extends
           .withHeader(authorizationHeader, equalTo(bearerToken(token)))
           .willReturn(aResponse().withBody(resourceBody)))
 
-        testWithClient(config) { client =>
+        testWithClient(config, clientToken) { client =>
           val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
 
           val result = client.expect[String](request).attempt.unsafeRunSync()
@@ -130,7 +132,7 @@ class ClientSpec extends
           .withHeader(authorizationHeader, equalTo(bearerToken(token)))
           .willReturn(aResponse().withBody(resourceBody)))
 
-        testWithClient(config) { client =>
+        testWithClient(config, clientToken) { client =>
           val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
 
           val result = client.expect[String](request).attempt.unsafeRunSync()
@@ -148,7 +150,7 @@ class ClientSpec extends
           .withHeader(authorizationHeader, equalTo(bearerToken(token)))
           .willReturn(aResponse().withBody(resourceBody)))
 
-        testWithClient(config) { client =>
+        testWithClient(config, clientToken) { client =>
           val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
 
           val result = client.expect[String](request).attempt.unsafeRunSync()
@@ -171,7 +173,7 @@ class ClientSpec extends
           .withHeader(authorizationHeader, equalTo(bearerToken(token)))
           .willReturn(aResponse().withBody(resourceBody)))
 
-        testWithClient(config) { client =>
+        testWithClient(config, clientToken) { client =>
           val request: Request[IO] = Request(method = Method.GET, uri = resourceUri)
 
           val result = client.expect[String](request).attempt.unsafeRunSync()
@@ -199,11 +201,10 @@ class ClientSpec extends
   private val resourceBody = "Hello World"
 
   private def defaultConfig() = Config(baseUri, "audience", "client-identity", "client-secret")
-  private def testWithClient(config: Config = defaultConfig())(test: Http4sClient[IO] => Unit): Unit = {
+  private def testWithClient(config: Config, clientToken: ClientToken[IO])(test: Http4sClient[IO] => Unit): Unit = {
     val testResult = for {
       httpClient <- BlazeClientBuilder[IO](global).stream
-      client = Client(config)(httpClient)
-      _ = test(client)
+      _ = Client[IO](config)(httpClient, clientToken).map(test)
     } yield ()
     testResult.compile.drain.unsafeRunSync()
   }
@@ -244,5 +245,9 @@ class ClientSpec extends
   override def afterEach(): Unit = wireMockServer.resetAll()
 
   override def afterAll(): Unit = wireMockServer.stop()
+}
+
+object ClientSpec {
+  private val clientToken: ClientToken[IO] = ClientToken[IO].unsafeRunSync
 }
 

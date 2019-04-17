@@ -43,8 +43,8 @@ lazy val root = (project in file(".")).
     coverageMinimum := 100,
     coverageFailOnMinimum := true,
     credentials += Credentials("Bintray", "dl.bintray.com", sys.env("BINTRAY_USER"), sys.env("BINTRAY_PASS")),
-    bintrayOrganization := Some("ovotech"),
-    bintrayRepository := "maven",
+    bintrayOrganization := Some("kaluza"),
+    bintrayRepository := "maven-private",
     fork in Test := true,
     javaOptions in Test += "-Xss64m"
   )

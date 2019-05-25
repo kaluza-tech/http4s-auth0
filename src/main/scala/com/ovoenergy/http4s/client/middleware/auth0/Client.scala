@@ -4,7 +4,9 @@ import java.net.ConnectException
 
 import cats.data.{EitherT, Kleisli}
 import cats.effect.Sync
+import cats.effect.concurrent.Ref
 import cats.implicits._
+import com.ovoenergy.http4s.client.middleware.auth0.Client.AuthZeroToken
 import com.ovoenergy.http4s.client.middleware.auth0.Client.Error._
 import org.http4s.circe._
 import org.http4s.client.{DisposableResponse, Client => Http4sClient}
@@ -20,22 +22,29 @@ import org.http4s._
   *       the token was not present or had become invalid.
   * @todo Clean up case-logic for retry into something neater
   */
-class Client[F[_]: Sync](val config: Config, val client: Http4sClient[F]) {
+class Client[F[_]: Sync] private (val config: Config, val client: Http4sClient[F], currentToken: Ref[F, Option[AuthZeroToken]]) {
   private implicit val authZeroErrorBodyEntityEncoder: EntityEncoder[F, ErrorBody] = jsonEncoderOf
 
   import Client._
 
+  @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
   def open(req: Request[F]): F[DisposableResponse[F]] = {
-    retryRequest(req, currentToken, 1).flatMap({
-      case Right((response, token)) =>
-        Sync[F].delay {
-          currentToken = Some(token)
-          response
-        }
-      case Left(err) =>
-        Sync[F].delay(currentToken = None)
-          .map(_ => errorResponse(err))
-    })
+    val newResponse: F[(DisposableResponse[F], Option[AuthZeroToken])] = for {
+      authToken <- currentToken.get
+      retry <- retryRequest(req, authToken, 1)
+      newResponseAndToken = getResultAndToken(retry)
+    } yield newResponseAndToken
+    newResponse.flatMap(r => currentToken.update(_ => r._2))
+    newResponse.map(r => r._1)
+  }
+
+
+  private def getResultAndToken(retryResult: Result[(DisposableResponse[F], AuthZeroToken)])
+    : (DisposableResponse[F], Option[AuthZeroToken]) = retryResult match {
+    case Right((response, token)) =>
+      (response, Some[AuthZeroToken](token))
+    case Left(err) =>
+      (errorResponse(err), Option.empty[AuthZeroToken])
   }
 
   @SuppressWarnings(Array("org.wartremover.warts.Recursion"))
@@ -100,8 +109,6 @@ class Client[F[_]: Sync](val config: Config, val client: Http4sClient[F]) {
   }
 
   private val nullOpDispose = Sync[F].pure(())
-
-  private var currentToken: Option[AuthZeroToken] = None
 }
 
 object Client {
@@ -111,14 +118,14 @@ object Client {
   type AuthZeroToken = String
 
   @SuppressWarnings(Array("org.wartremover.warts.Nothing"))
-  def apply[F[_]: Sync](config: Config)(client: Http4sClient[F]): Http4sClient[F] = {
-    val authClient = new Client(config, client)
+  def apply[F[_]: Sync](config: Config)(client: Http4sClient[F], clientToken: ClientToken[F]): F[Http4sClient[F]] = {
+    val authClient = new Client(config, client, clientToken.token)
 
     def authenticatedOpen(req: Request[F]): F[DisposableResponse[F]] = {
       authClient.open(req)
     }
 
-    client.copy(open = Kleisli(authenticatedOpen))
+    Sync[F].pure(client.copy(open = Kleisli(authenticatedOpen)))
   }
 
   sealed trait Error extends Product with Serializable {
@@ -138,5 +145,11 @@ object Client {
     }
 
   }
+}
 
+final class ClientToken[F[_]](val token: Ref[F, Option[AuthZeroToken]])
+object ClientToken {
+  def apply[F[_]: Sync]: F[ClientToken[F]] = for {
+    t <-  Ref.of[F, Option[AuthZeroToken]](None)
+  } yield new ClientToken[F](t)
 }
